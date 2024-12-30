@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Antipode</title>
+        <!-- jQuery -->
+        <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+        <!-- Mapbox GL JS -->
+        <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.1/mapbox-gl.css" rel="stylesheet">
+        <script src="https://api.mapbox.com/mapbox-gl-js/v3.9.1/mapbox-gl.js"></script>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            #map {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+            }
+            .map-options {
+                position: fixed;
+                display: flex;
+                flex-direction: column;
+                top: 5px;
+                left: 5px;
+            }
+            
+            .option-btn {
+                margin: 3px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="map"></div>
+        <div class="map-options">
+            <button class="option-btn" onclick="zoomToMarker(primaryMarker)">Zoom to white marker</button>
+            <button class="option-btn" onclick="zoomToMarker(secondaryMarker)">Zoom to black marker</button>
+        </div>
+        <script>
+            mapboxgl.accessToken = 'pk.eyJ1IjoiaG9hbmdjYW9taW5oIiwiYSI6ImNtNWI1djZuejA3czkybHB4YnBpcDRrNmoifQ.bz4RD964fLU5ORmJnUQvfA';
+
+            const defaultLngLat = new mapboxgl.LngLat(0, 0);
+
+            function calculateAntipode(lngLat) {
+                let lng = (lngLat.lng + 180) % 360;
+                lng -= 360 * (lng > 180);
+                let lat = -lngLat.lat;
+                return new mapboxgl.LngLat(lng, lat);
+            }
+
+            const primaryMarker = new mapboxgl.Marker({
+                color: "#CCCCCC",
+                draggable: true
+            }).setLngLat(JSON.parse(localStorage.getItem("primaryMarker")) || defaultLngLat);
+            const secondaryMarker = new mapboxgl.Marker({
+                color: "#444444",
+                draggable: true
+            }).setLngLat(calculateAntipode(primaryMarker.getLngLat()));
+
+            primaryMarker.on("drag", (e) => {
+                secondaryMarker.setLngLat(calculateAntipode(e.target.getLngLat()));
+            });
+            secondaryMarker.on("drag", (e) => {
+                primaryMarker.setLngLat(calculateAntipode(e.target.getLngLat()));
+            });
+
+            primaryMarker.on("dragend", (e) => {
+                localStorage.setItem("primaryMarker", JSON.stringify(e.target.getLngLat()));
+            });
+            secondaryMarker.on("dragend", (e) => {
+                localStorage.setItem("primaryMarker", JSON.stringify(calculateAntipode(e.target.getLngLat())));
+            });
+            
+            const map = new mapboxgl.Map({
+                container: "map",
+                center: primaryMarker.getLngLat(),
+                zoom: 11
+            });
+            primaryMarker.addTo(map);
+            secondaryMarker.addTo(map);
+
+            function zoomToMarker(marker) {
+                map.flyTo({
+                    center: marker.getLngLat(),
+                    zoom: 11
+                });
+            }
+        </script>
+    </body>
+</html>
